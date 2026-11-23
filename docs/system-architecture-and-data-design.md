@@ -145,21 +145,71 @@ This is a high-level relationship view, not a replacement for the detailed ERD. 
 
 ### 3.1 Entity and Odoo model mapping
 
-| Business entity | Proposed Odoo model / starting point | Design note |
-|---|---|---|
-| Customer | `res.partner` or `projectops.customer` | Evaluate native Contacts before creating a separate model |
-| Project | Native Project model or `projectops.project` | Confirm through fit-gap analysis |
-| User | `res.users` | Reuse native Odoo users and security groups |
-| Project Assignment | `projectops.assignment` | Proposed custom model |
-| Milestone | Native Project functionality or `projectops.milestone` | Confirm whether extension or custom model is needed |
-| Task | Native Project Task or `projectops.task` | Evaluate native task functionality |
-| Worklog | Native Timesheets or `projectops.worklog` | Evaluate native timesheet functionality |
-| Expense | Native Expenses or `projectops.expense` | Evaluate native expense functionality |
-| Invoice | Native Accounting/Invoicing or `projectops.invoice` | Avoid duplicating accounting functionality |
-| Payment | Native Accounting/Invoicing or `projectops.payment` | Confirm the required project-level payment tracking |
-| Approval Log | `projectops.approval.log` | Proposed custom record of approval actions |
+ProjectOps will be developed as a custom add-on that extends and integrates with Odoo 19. ProjectOps will use the Odoo framework, ORM, security mechanisms, views, reporting capabilities and existing business applications wherever appropriate.
+
+#### 3.1.1 Reuse, extend and custom development
+
+The team has approved three implementation approaches:
+
+#### A. Reuse
+
+Use existing Odoo models, applications and functionality without unnecessarily recreating them.
+
+Examples:
+
+- Reuse Odoo Contacts for customer records.
+- Reuse Odoo users and security groups.
+- Reuse native project, task, timesheet, expense and accounting functionality where suitable.
+
+#### B. Extend
+
+Inherit or configure existing Odoo functionality to support ProjectOps-specific requirements.
+
+Examples:
+
+- Add ProjectOps budget and financial fields to native project records.
+- Add approval and historical cost information to native timesheet records.
+- Connect project-related expenses to the appropriate project.
+Extend native views to display ProjectOps information.
+
+#### C. Custom development
+
+Develop new models, workflows, calculations or interfaces when native Odoo functionality does not adequately satisfy the requirements.
+
+Examples:
+
+- ProjectOps approval history.
+- Project-specific assignment information where native project membership is insufficient.
+- project health indicators.
+- Portfolio-level monitoring and reporting.
+
+The guiding principle is:
+
+Reuse existing Odoo capabilities first, extend them where ProjectOps requires additional functionality, and create custom components only for requirements that cannot be adequately supported by the existing platform.
 
 The team should not create duplicate customer, user, project, task or accounting models before completing the Odoo fit-gap review. The final module dependencies must also reflect the native Odoo features selected for use.
+
+| Functional Area | Odoo Starting Point | Approach | ProjectOps Responsibility |
+|----------------|--------------------|----------|--------------------------|
+| Customer management | `res.partner` | Reuse | Use native customer records. |
+| User management | `res.users` | Reuse | Use native Odoo users and groups. |
+| Employee information | `hr.employee` | Reuse + Extend | Maintain ProjectOps hourly cost information if approved by the team. |
+| Project management | `project.project` | Reuse + Extend | Add ProjectOps-specific project and financial information. |
+| Task management | `project.task` | Reuse + Configure + Extend | Use native tasks and add required ProjectOps relationships or fields. |
+| Project assignments | Native project membership | Reuse + Custom | Use native membership where sufficient; add a custom assignment model if role and assignment-period requirements need it. |
+| Milestones | Native project functionality, if available and sufficient | Reuse or Custom | Create a custom milestone model only if the selected Odoo environment does not adequately support the required workflow. |
+| Worklogs / Timesheets | `account.analytic.line` | Reuse + Extend | Add ProjectOps approval and historical cost information. |
+| Expenses | `hr.expense` | Reuse + Configure + Extend | Use native expense records and connect them to ProjectOps projects. |
+| Approval history | No directly equivalent ProjectOps approval register | Custom | Maintain traceable worklog and expense approval decisions. |
+| Recorded project cost | ProjectOps calculation logic | Custom | Calculate cost from approved worklogs and approved expenses. |
+| Budget and financial indicators | `project.project` and ProjectOps calculations | Extend + Custom | Maintain project budgets and calculate utilization and contribution indicators. |
+| Customer invoices | `account.move` | Reuse + Extend | Use native accounting invoices and connect them to projects where required. |
+| Customer payments | `account.payment` and accounting reconciliation | Reuse | Use native payment and reconciliation information. |
+| Individual project dashboard | Native project views | Reuse + Extend | Present ProjectOps project-level information. |
+| Portfolio dashboard | ProjectOps dashboard functionality | Custom | Display portfolio-wide project and financial indicators. |
+| Project health | ProjectOps calculation logic | Custom | Produce transparent rule-based health indicators. |
+| Printable project report | Odoo QWeb reporting | Reuse + Custom | Develop a ProjectOps-specific project summary report. |
+| Security | Odoo access groups and record rules | Reuse + Configure + Extend | Define ProjectOps-specific roles and record-level restrictions. |
 
 ### 3.2 Key data relationships
 
