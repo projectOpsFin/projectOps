@@ -222,6 +222,224 @@ The team should not create duplicate customer, user, project, task or accounting
 
 The final relationship definitions and field specifications must remain consistent with the approved ERD and shared technical contracts.
 
+### 3.3 Field definitions
+
+The following tables translate the ERD into proposed Odoo fields. Names and types should be treated as the shared baseline unless the team agrees to a change.
+
+The proposed field types translate the ERD attributes into Odoo ORM types; they are not field types explicitly specified in the ERD. The model names shown are the proposed ProjectOps names. Where the fit-gap review selects a native Odoo model (see section 3.1), the same field names and meanings apply as extensions of, or mappings to, that native model.
+
+#### 3.3.1 Customer
+
+**Proposed model:** `projectops.customer`  
+**Alternative:** Extend or use `res.partner`.
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `name` | Char | Yes | Customer name |
+| `email` | Char | No | Customer email |
+| `phone` | Char | No | Customer phone |
+| `billing_address` | Text | No | Customer billing address |
+| `created_at` | Datetime | Automatic | Record creation timestamp |
+
+#### 3.3.2 Project
+
+**Proposed model:** `projectops.project`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `project_code` | Char | Yes | Unique project code |
+| `customer_id` | Many2one | Yes | Related customer |
+| `owner_user_id` | Many2one | Yes | Project owner; relates to `res.users` |
+| `name` | Char | Yes | Project name |
+| `start_date` | Date | Yes | Project start date |
+| `end_date` | Date | No | Planned project end date |
+| `contract_value` | Monetary | Yes | Agreed contract value |
+| `cost_budget` | Monetary | Yes | Project cost budget |
+| `currency_id` | Many2one | Yes | Currency reference |
+| `state` | Selection | Yes | Project lifecycle status |
+
+Constraints:
+- `project_code` must be unique.
+- `end_date` must not be earlier than `start_date`.
+- Contract value and cost budget must follow the agreed non-negative validation rules.
+
+#### 3.3.3 User
+
+**Native model:** `res.users`
+
+The ERD identifies these user attributes:
+
+| Field | Odoo field type | Description |
+|---|---|---|
+| `name` | Native Char | User name |
+| `login` / email | Native fields | User login and contact information |
+| `hourly_cost_rate` | Monetary | User's applicable hourly cost rate |
+| `active` | Native Boolean | Whether the user is active |
+
+The ERD shows a role/security group attribute. In Odoo, role permissions should primarily be assigned through security groups rather than relying on a separate text role field.
+
+The team must agree where the hourly cost rate is stored and who can maintain it. The worklog must preserve the applicable rate as a historical snapshot.
+
+#### 3.3.4 Project Assignment
+
+**Proposed model:** `projectops.assignment`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `project_id` | Many2one | Yes | Related project |
+| `user_id` | Many2one | Yes | Assigned Odoo user |
+| `project_role` | Selection | Yes | User's responsibility in this project |
+| `start_date` | Date | No | Assignment start |
+| `end_date` | Date | No | Assignment end |
+| `active` | Boolean | Yes | Whether assignment is active |
+
+Constraint: A user should not have duplicate assignment records for the same project. The ERD specifies a unique combination of project and user.
+
+#### 3.3.5 Milestone
+
+**Proposed model:** `projectops.milestone`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `project_id` | Many2one | Yes | Related project |
+| `title` | Char | Yes | Milestone title |
+| `description` | Text | No | Milestone details |
+| `due_date` | Date | No | Target completion date |
+| `status` | Selection | Yes | Milestone status |
+| `sequence` | Integer | Yes | Display order |
+
+#### 3.3.6 Task
+
+**Proposed model:** `projectops.task`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `project_id` | Many2one | Yes | Related project |
+| `milestone_id` | Many2one | No | Related milestone |
+| `assignee_user_id` | Many2one | Yes | Assigned user |
+| `title` | Char | Yes | Task title |
+| `description` | Text | No | Task details |
+| `deadline` | Date | No | Task deadline |
+| `status` | Selection | Yes | Task status |
+| `progress` | Float | Yes | Task progress percentage |
+
+Validation: Progress must remain between 0 and 100. The team must agree whether task completion automatically sets progress to 100%.
+
+#### 3.3.7 Worklog
+
+**Proposed model:** `projectops.worklog`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `project_id` | Many2one | Yes | Related project |
+| `task_id` | Many2one | No | Related task |
+| `submitted_by_user_id` | Many2one | Yes | User submitting the worklog |
+| `work_date` | Date | Yes | Date the work was performed |
+| `hours` | Float | Yes | Number of hours worked |
+| `hourly_rate_snapshot` | Monetary | Yes | Historical hourly cost rate |
+| `description` | Text | Yes | Work performed |
+| `status` | Selection | Yes | Submission status |
+
+The hourly rate snapshot is required by the proposal's historical cost integrity requirement. A later change to a user's hourly rate must not alter previously recorded worklog costs.
+
+#### 3.3.8 Expense
+
+**Proposed model:** `projectops.expense`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `project_id` | Many2one | Yes | Related project |
+| `submitter_user_id` | Many2one | Yes | Submitting user |
+| `expense_date` | Date | Yes | Expense date |
+| `category` | Selection or Many2one | Yes | Expense category |
+| `amount` | Monetary | Yes | Expense amount |
+| `currency_id` | Many2one | Yes | Currency reference |
+| `receipt_file` | Binary or attachment reference | No | Supporting receipt |
+| `status` | Selection | Yes | Submission status |
+
+#### 3.3.9 Invoice
+
+**Proposed model:** `projectops.invoice`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `project_id` | Many2one | Yes | Related project |
+| `invoice_number` | Char | Yes | Unique invoice reference |
+| `amount` | Monetary | Yes | Invoice amount |
+| `currency_id` | Many2one | Yes | Currency reference |
+| `issue_date` | Date | Yes | Issue date |
+| `due_date` | Date | Yes | Payment due date |
+| `status` | Selection | Yes | Invoice lifecycle status |
+
+The invoice model is intended for the ProjectOps billing register unless the fit-gap review selects native Odoo invoicing.
+
+#### 3.3.10 Payment
+
+**Proposed model:** `projectops.payment`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `invoice_id` | Many2one | Yes | Related invoice |
+| `amount` | Monetary | Yes | Payment amount |
+| `currency_id` | Many2one | Yes | Currency reference |
+| `payment_date` | Date | Yes | Payment date |
+| `payment_reference` | Char | No | Payment reference |
+
+The proposal requires support for full and partial payments. Reversal and adjustment behavior must be agreed with Activity 5 before implementation.
+
+#### 3.3.11 Approval Log
+
+**Proposed model:** `projectops.approval.log`
+
+| Field | Odoo field type | Required | Description |
+|---|---|---|---|
+| `approver_user_id` | Many2one | Yes | User making the decision |
+| `worklog_id` | Many2one | Conditional | Related worklog |
+| `expense_id` | Many2one | Conditional | Related expense |
+| `decision` | Selection | Yes | Approval decision |
+| `decided_at` | Datetime | Yes | Decision timestamp |
+| `comment` | Text | No | Approval or rejection comment |
+
+Constraint: Each approval log entry must refer to exactly one worklog or one expense, not both.
+
+Approval records must preserve the identity of the approver and the decision made.
+
+### 3.4 Model relationships
+
+The following relationships are based on the supplied ERD.
+
+| Parent model | Related model | Relationship | Odoo field on child |
+|---|---|---|---|
+| Customer | Project | One-to-many | `customer_id` |
+| User | Project | One-to-many | `owner_user_id` |
+| Project | Project Assignment | One-to-many | `project_id` |
+| User | Project Assignment | One-to-many | `user_id` |
+| Project | Milestone | One-to-many | `project_id` |
+| Project | Task | One-to-many | `project_id` |
+| Milestone | Task | One-to-many | `milestone_id` |
+| User | Task | One-to-many | `assignee_user_id` |
+| Project | Worklog | One-to-many | `project_id` |
+| Task | Worklog | One-to-many | `task_id` |
+| User | Worklog | One-to-many | `submitted_by_user_id` |
+| Project | Expense | One-to-many | `project_id` |
+| User | Expense | One-to-many | `submitter_user_id` |
+| Project | Invoice | One-to-many | `project_id` |
+| Invoice | Payment | One-to-many | `invoice_id` |
+| User | Approval Log | One-to-many | `approver_user_id` |
+| Worklog | Approval Log | One-to-many | `worklog_id` |
+| Expense | Approval Log | One-to-many | `expense_id` |
+
+#### Relationship rules
+
+1. Every project must belong to one customer.
+2. Every project must have one designated owner.
+3. A project may have multiple assignments, milestones, tasks, worklogs, expenses and invoices.
+4. A task may optionally belong to a milestone.
+5. A worklog may optionally reference a task.
+6. An invoice may have multiple payment records.
+7. Approval history must identify the user who made each decision.
+8. Project assignments must prevent duplicate active assignments for the same project and user.
+
 ## 4. Data Integrity and Business Constraints
 
 The following requirements affect the data model and must be enforced in server-side model logic and, where appropriate, database constraints:
@@ -235,6 +453,8 @@ The following requirements affect the data model and must be enforced in server-
 - Only approved worklogs and approved expenses contribute to recorded project cost.
 - A user must not approve their own worklog or expense.
 - Approval actions must record the responsible approver and action history.
+- Each approval log entry must refer to exactly one worklog or one expense, not both.
+- Invoice numbers must be unique.
 - Monetary calculations must use the project's agreed currency and precision rules.
 
 Specific status values, transition rules, rejection/resubmission behavior, rounding rules and correction procedures remain subject to team agreement where they are not yet defined in the source documents.
@@ -252,7 +472,48 @@ The four internal roles are:
 
 The role-permission matrix is a draft. Permissions marked TBD must be agreed before they are implemented; TBD must not be treated as unrestricted access. The exact approval authority, record scope and visibility of approval history remain team decisions. Customer is currently treated as an external party represented by a customer record; customer login access is not defined in the project scope.
 
-## 6. Technical Design Decisions to Confirm
+## 6. Shared Interfaces and Methods
+
+The following method names are proposed contracts for communication between components. The team should use consistent names and behavior.
+
+| Model | Method | Expected behavior |
+|---|---|---|
+| Worklog | `action_submit()` | Validate and submit a worklog |
+| Worklog | `action_approve()` | Approve an eligible submitted worklog |
+| Worklog | `action_reject()` | Reject a submitted worklog |
+| Expense | `action_submit()` | Validate and submit an expense |
+| Expense | `action_approve()` | Approve an eligible submitted expense |
+| Expense | `action_reject()` | Reject a submitted expense |
+| Task | `action_mark_done()` | Mark a task as completed after validation |
+| Project | `action_activate()` | Activate an eligible project |
+| Project | `action_complete()` | Complete a project according to agreed completion rules |
+| Invoice | `action_register_payment()` | Register a payment against an invoice |
+
+### 6.1 Interface expectations
+
+**Worklog and expense components**
+- Create records using the agreed field names.
+- Submit records through the agreed submission methods.
+- Expose the agreed status and approval information.
+
+**Approval component**
+- Read submitted records.
+- Apply authorization and no-self-approval checks.
+- Record the approver, decision, timestamp and comment.
+- Update the submission status.
+
+**Calculation component**
+- Read approved worklogs and expenses only when calculating recorded project cost.
+- Use the agreed hourly rate snapshot.
+- Follow the calculation rules agreed in Activity 5.
+
+**Dashboard and reporting component**
+- Read the agreed project, task, cost, billing and payment fields.
+- Use the agreed calculation methods or computed fields rather than implementing separate conflicting formulas.
+
+Method names for calculation fields and methods must be finalized with the Activity 5 owner.
+
+## 7. Technical Design Decisions to Confirm
 
 The following items must be resolved and reflected in the ERD and technical contracts before dependent implementation is finalized:
 
@@ -263,10 +524,14 @@ The following items must be resolved and reflected in the ERD and technical cont
 5. Record-level access boundaries and visibility of financial and approval information.
 6. Currency precision, cost calculations, payment adjustments and reversal handling.
 7. Required module dependencies for the selected Odoo edition and environment.
+8. Approval method names and authorization behavior.
+9. Calculation method names and computed-field dependencies.
+10. Which fields and relationships are needed by screens and reports.
+11. Project assignment and ownership rules used by record rules.
 
 Changes to shared models, fields, status values or method interfaces should be reviewed by affected team members and recorded in the shared technical contracts before implementation is changed.
 
-## 7. Related Project Documents
+## 8. Related Project Documents
 
 - `01-project-overview-and-requirements.md` — project scope, actors and requirements.
 - `03-workflows-and-business-rules.md` — business workflows, status transitions and calculations.
