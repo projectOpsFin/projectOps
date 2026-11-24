@@ -1,1 +1,4 @@
-
+# AI coding agent configuration and downloaded skills
+.agent/
+.shared/
+.agents/
