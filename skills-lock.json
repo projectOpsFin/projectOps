@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "odoo-19": {
+      "source": "C:\\odooDev\\projectops\\.shared\\skills\\odoo-19.0",
+      "sourceType": "local",
+      "computedHash": "921f6d344b1ddd385b15a928c242b371a7d8d692f26f87c40b3c88f7967a1e12"
+    }
+  }
+}
