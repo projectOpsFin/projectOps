@@ -1,5 +1,9 @@
+
+# AI coding agent configuration and downloaded skills
+.agent/
+.shared/
+.agents/
+
+# Application data and Python cache
 data/
-__pycache__
-
-
-
+__pycache__/

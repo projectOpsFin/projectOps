@@ -230,8 +230,7 @@ The proposed field types translate the ERD attributes into Odoo ORM types; they 
 
 #### 3.3.1 Customer
 
-**Proposed model:** `projectops.customer`  
-**Alternative:** Extend or use `res.partner`.
+**Model:** `res.partner` (Reuse + Extend)
 
 | Field | Odoo field type | Required | Description |
 |---|---|---|---|
@@ -243,7 +242,7 @@ The proposed field types translate the ERD attributes into Odoo ORM types; they 
 
 #### 3.3.2 Project
 
-**Proposed model:** `projectops.project`
+**Model:** `project.project` (Reuse + Extend)
 
 | Field | Odoo field type | Required | Description |
 |---|---|---|---|

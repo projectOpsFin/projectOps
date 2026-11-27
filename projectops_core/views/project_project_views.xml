@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="projectops_project_view_list" model="ir.ui.view">
+        <field name="name">project.project.list.projectops</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='is_favorite']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='name']" position="before">
+                <field name="project_code" string="Project Code"/>
+            </xpath>
+            <xpath expr="//list/field[@name='partner_id']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='partner_id']" position="after">
+                <xpath expr="//list/field[@name='user_id']" position="move"/>
+            </xpath>
+            <xpath expr="//list/field[@name='company_id'][@groups='base.group_multi_company']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='date_start']" position="attributes">
+                <attribute name="string">Start Date</attribute>
+                <attribute name="widget"/>
+                <attribute name="options"/>
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='date']" position="attributes">
+                <attribute name="column_invisible"/>
+                <attribute name="string">End Date</attribute>
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='user_id']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='last_update_status']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='tag_ids']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='milestone_progress']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='next_milestone_id']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//list/button[@name='action_view_tasks']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='stage_id']" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='date']" position="after">
+                <field name="state" string="Status"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="projectops_project_view_search" model="ir.ui.view">
+        <field name="name">project.project.search.projectops</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_project_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search/field[@name='name']" position="after">
+                <field name="project_code" string="Project Code"/>
+            </xpath>
+            <xpath expr="//search/filter[@name='own_projects']" position="after">
+                <filter string="In Progress" name="projectops_in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Recently Started" name="projectops_recently_started" domain="[('state', '=', 'in_progress'), ('date_start', '&gt;=', (context_today() - relativedelta(days=30)).strftime('%Y-%m-%d')), ('date_start', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Ending Soon" name="projectops_ending_soon" domain="[('state', '=', 'in_progress'), ('date', '&gt;=', context_today().strftime('%Y-%m-%d')), ('date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+            </xpath>
+            <xpath expr="//search/group/filter[@name='Manager']" position="after">
+                <filter string="Customer" name="projectops_group_customer" context="{'group_by': 'partner_id'}"/>
+                <filter string="Status" name="projectops_group_status" context="{'group_by': 'state'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_projectops_projects" model="ir.actions.act_window">
+        <field name="name">Projects</field>
+        <field name="res_model">project.project</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="projectops_project_view_list"/>
+        <field name="search_view_id" ref="projectops_project_view_search"/>
+        <field name="domain">[('is_template', '=', False)]</field>
+        <field name="context">{'display_milestone_deadline': True}</field>
+        <field name="target">current</field>
+    </record>
+</odoo>

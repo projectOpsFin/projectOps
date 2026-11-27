@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Module Category for ProjectOps -->
+    <record id="module_category_projectops" model="ir.module.category">
+        <field name="name">ProjectOps</field>
+        <field name="description">Project management, team assignments, and business operations.</field>
+        <field name="sequence">15</field>
+    </record>
+
+    <!-- Odoo 19 Privilege Record -->
+    <record id="res_groups_privilege_projectops" model="res.groups.privilege">
+        <field name="name">ProjectOps Roles</field>
+        <field name="sequence">10</field>
+        <field name="category_id" ref="module_category_projectops"/>
+    </record>
+
+    <!-- System Roles (Odoo 19: using privilege_id) -->
+
+    <!-- 1. Team Member -->
+    <record id="group_projectops_team_member" model="res.groups">
+        <field name="name">Team Member</field>
+        <field name="comment">Performs assigned project work and submits worklogs and expenses.</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_projectops"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- 2. Project Manager -->
+    <record id="group_projectops_project_manager" model="res.groups">
+        <field name="name">Project Manager</field>
+        <field name="comment">Manages project delivery, tasks, milestones, and assigned team members.</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_projectops"/>
+        <field name="implied_ids" eval="[(4, ref('group_projectops_team_member')), (4, ref('project.group_project_user'))]"/>
+    </record>
+
+    <!-- 3. Finance Officer -->
+    <record id="group_projectops_finance" model="res.groups">
+        <field name="name">Finance Officer</field>
+        <field name="comment">Manages project financials, billing records, and customer payments.</field>
+        <field name="sequence">30</field>
+        <field name="privilege_id" ref="res_groups_privilege_projectops"/>
+        <field name="implied_ids" eval="[(4, ref('group_projectops_team_member'))]"/>
+    </record>
+
+    <!-- 4. Owner / Operations Manager -->
+    <record id="group_projectops_manager" model="res.groups">
+        <field name="name">Owner / Operations Manager</field>
+        <field name="comment">Full oversight over all operations, projects, budgets, and finances.</field>
+        <field name="sequence">40</field>
+        <field name="privilege_id" ref="res_groups_privilege_projectops"/>
+        <field name="implied_ids" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_finance')), (4, ref('project.group_project_manager'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+
+    <!-- Record Rules -->
+    <data noupdate="1">
+
+        <!-- Team Member Rule: can only view projects where they are owner or assigned -->
+        <record id="rule_projectops_project_team_member" model="ir.rule">
+            <field name="name">ProjectOps: Team Member assigned projects</field>
+            <field name="model_id" ref="project.model_project_project"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">['|', ('owner_user_id', '=', user.id), ('assigned_user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <!-- Project Manager Rule: can manage their projects, see assigned projects -->
+        <record id="rule_projectops_project_project_manager" model="ir.rule">
+            <field name="name">ProjectOps: Project Manager projects</field>
+            <field name="model_id" ref="project.model_project_project"/>
+            <field name="groups" eval="[(4, ref('group_projectops_project_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <!-- Operations Manager & Finance Rule: see all projects -->
+        <record id="rule_projectops_project_operations_manager" model="ir.rule">
+            <field name="name">ProjectOps: Operations Manager and Finance see all projects</field>
+            <field name="model_id" ref="project.model_project_project"/>
+            <field name="groups" eval="[(4, ref('group_projectops_manager')), (4, ref('group_projectops_finance'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <!-- Assignment Rules -->
+        <record id="rule_projectops_assignment_team_member" model="ir.rule">
+            <field name="name">ProjectOps: Team Member view assignments</field>
+            <field name="model_id" ref="model_projectops_assignment"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">['|', ('project_id.owner_user_id', '=', user.id), ('project_id.assigned_user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_assignment_manager" model="ir.rule">
+            <field name="name">ProjectOps: Manager manage assignments</field>
+            <field name="model_id" ref="model_projectops_assignment"/>
+            <field name="groups" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+    </data>
+</odoo>

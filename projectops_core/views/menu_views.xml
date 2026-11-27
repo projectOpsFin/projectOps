@@ -4,5 +4,12 @@
         id="menu_projectops_root"
         name="ProjectOps"
         sequence="10"
-    />
+    >
+        <menuitem
+            id="menu_projectops_projects"
+            name="Projects"
+            action="action_projectops_projects"
+            sequence="10"
+        />
+    </menuitem>
 </odoo>
