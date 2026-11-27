@@ -18,6 +18,7 @@
     'data': [
         'security/projectops_security.xml',
         'security/ir.model.access.csv',
+        'views/project_project_views.xml',
         'views/menu_views.xml',
     ],
     'installable': True,
