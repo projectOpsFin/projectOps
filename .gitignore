@@ -1,4 +1,3 @@
-
 # AI coding agent configuration and downloaded skills
 .agent/
 .shared/
@@ -7,3 +6,8 @@
 # Application data and Python cache
 data/
 __pycache__/
+*.pyc
+
+# Local editor and type checker settings
+.vscode/
+pyrightconfig.json

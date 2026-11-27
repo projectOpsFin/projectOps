@@ -114,3 +114,25 @@ class TestProjectModel(TransactionCase):
                 'contract_value': 10000.0,
                 'cost_budget': 5000.0,
             })
+
+    def test_auto_generated_project_code(self):
+        """Test that project_code auto-generates sequentially (PRJ-0001, PRJ-0002, ...)."""
+        p1, p2 = self.env['project.project'].create([
+            {
+                'name': 'Auto Code Project 1',
+                'customer_id': self.customer.id,
+                'owner_user_id': self.owner.id,
+                'start_date': '2026-01-01',
+            },
+            {
+                'name': 'Auto Code Project 2',
+                'customer_id': self.customer.id,
+                'owner_user_id': self.owner.id,
+                'start_date': '2026-01-01',
+            },
+        ])
+        self.assertRegex(p1.project_code, r'^PRJ-\d{4}$')
+        self.assertRegex(p2.project_code, r'^PRJ-\d{4}$')
+        num1 = int(p1.project_code.split('-')[1])
+        num2 = int(p2.project_code.split('-')[1])
+        self.assertEqual(num2, num1 + 1)

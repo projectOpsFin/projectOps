@@ -309,20 +309,20 @@ Constraint: A user should not have duplicate assignment records for the same pro
 
 #### 3.3.6 Task
 
-**Proposed model:** `projectops.task`
+**Model:** `project.task` (Reuse + Extend)
 
 | Field | Odoo field type | Required | Description |
 |---|---|---|---|
 | `project_id` | Many2one | Yes | Related project |
-| `milestone_id` | Many2one | No | Related milestone |
-| `assignee_user_id` | Many2one | Yes | Assigned user |
-| `title` | Char | Yes | Task title |
-| `description` | Text | No | Task details |
-| `deadline` | Date | No | Task deadline |
-| `status` | Selection | Yes | Task status |
-| `progress` | Float | Yes | Task progress percentage |
+| `projectops_milestone_id` | Many2one | No | Related `projectops.milestone` (named `projectops_milestone_id` to avoid conflicting with native `project.task.milestone_id` which targets `project.milestone`) |
+| `assignee_user_id` | Many2one | Yes | Assigned user (synced with native `user_ids`) |
+| `title` | Char | Yes | Task title (synced with native `name`) |
+| `description` | Html | No | Task details (native `project.task.description`) |
+| `deadline` | Date | No | Task deadline (synced with native `date_deadline`) |
+| `status` | Selection | Yes | Task status (`todo`, `in_progress`, `done`, `cancelled`; synced with native `state`) |
+| `progress` | Float | Yes | Task progress percentage (`0`–`100`) |
 
-Validation: Progress must remain between 0 and 100. The team must agree whether task completion automatically sets progress to 100%.
+Validation: Progress must remain between 0 and 100. Calling `action_mark_done()` (or setting `status` to `done`) automatically sets `progress` to `100.0`.
 
 #### 3.3.7 Worklog
 
@@ -437,7 +437,7 @@ The following relationships are based on the supplied ERD.
 5. A worklog may optionally reference a task.
 6. An invoice may have multiple payment records.
 7. Approval history must identify the user who made each decision.
-8. Project assignments must prevent duplicate active assignments for the same project and user.
+8. Project assignments must prevent duplicate assignments for the same project and user (`UNIQUE(project_id, user_id)`).
 
 ## 4. Data Integrity and Business Constraints
 

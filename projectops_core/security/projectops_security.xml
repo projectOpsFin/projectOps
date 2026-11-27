@@ -116,5 +116,84 @@
             <field name="perm_unlink" eval="1"/>
         </record>
 
+        <!-- Milestone Rules -->
+        <record id="rule_projectops_milestone_team_member" model="ir.rule">
+            <field name="name">ProjectOps: Team Member view assigned project milestones</field>
+            <field name="model_id" ref="model_projectops_milestone"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">['|', ('project_id.owner_user_id', '=', user.id), ('project_id.assigned_user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_milestone_finance" model="ir.rule">
+            <field name="name">ProjectOps: Finance view all milestones</field>
+            <field name="model_id" ref="model_projectops_milestone"/>
+            <field name="groups" eval="[(4, ref('group_projectops_finance'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_milestone_manager" model="ir.rule">
+            <field name="name">ProjectOps: Manager manage milestones</field>
+            <field name="model_id" ref="model_projectops_milestone"/>
+            <field name="groups" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <!-- Task Rules -->
+        <record id="rule_projectops_task_team_member_read" model="ir.rule">
+            <field name="name">ProjectOps: Team Member view tasks on assigned projects</field>
+            <field name="model_id" ref="project.model_project_task"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">['|', '|', ('assignee_user_id', '=', user.id), ('user_ids', 'in', [user.id]), '|', ('project_id.owner_user_id', '=', user.id), ('project_id.assigned_user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_task_team_member_write" model="ir.rule">
+            <field name="name">ProjectOps: Team Member update own assigned tasks</field>
+            <field name="model_id" ref="project.model_project_task"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">['|', ('assignee_user_id', '=', user.id), ('user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="0"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_task_finance" model="ir.rule">
+            <field name="name">ProjectOps: Finance view all tasks</field>
+            <field name="model_id" ref="project.model_project_task"/>
+            <field name="groups" eval="[(4, ref('group_projectops_finance'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_task_manager" model="ir.rule">
+            <field name="name">ProjectOps: Manager manage tasks</field>
+            <field name="model_id" ref="project.model_project_task"/>
+            <field name="groups" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
     </data>
 </odoo>
