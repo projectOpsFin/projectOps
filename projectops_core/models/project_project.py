@@ -11,9 +11,11 @@ class ProjectProject(models.Model):
         string='Project Code',
         required=True,
         copy=False,
+        readonly=True,
+        default='New',
         index=True,
         tracking=True,
-        help='Unique identifier for the project.',
+        help='Unique identifier for the project (auto-generated as PRJ-0001, PRJ-0002, ...).',
     )
     customer_id = fields.Many2one(
         'res.partner',
@@ -97,6 +99,33 @@ class ProjectProject(models.Model):
         store=True,
         help='All active users currently assigned to this project.',
     )
+    projectops_milestone_ids = fields.One2many(
+        'projectops.milestone',
+        'project_id',
+        string='ProjectOps Milestones',
+        help='Milestones defined for this project.',
+    )
+    projectops_milestone_count = fields.Integer(
+        string='ProjectOps Milestone Count',
+        compute='_compute_projectops_milestone_count',
+    )
+    progress = fields.Float(
+        string='Progress (%)',
+        compute='_compute_project_progress',
+        store=True,
+        help='Overall project progress calculated as the average progress of non-cancelled tasks.',
+    )
+    overdue_task_count = fields.Integer(
+        string='Overdue Tasks',
+        compute='_compute_overdue_tasks',
+        help='Number of non-completed, non-cancelled tasks whose deadline has passed.',
+    )
+    has_overdue_tasks = fields.Boolean(
+        string='Has Overdue Tasks',
+        compute='_compute_overdue_tasks',
+        search='_search_has_overdue_tasks',
+        help='Indicates whether the project has at least one overdue task.',
+    )
 
     privacy_visibility = fields.Selection(
         default='followers',
@@ -156,6 +185,38 @@ class ProjectProject(models.Model):
             active_assignments = project.assignment_ids.filtered('active')
             project.assigned_user_ids = active_assignments.mapped('user_id')
 
+    @api.depends('projectops_milestone_ids')
+    def _compute_projectops_milestone_count(self):
+        for project in self:
+            project.projectops_milestone_count = len(project.projectops_milestone_ids)
+
+    @api.depends('task_ids.progress', 'task_ids.status', 'task_ids.active')
+    def _compute_project_progress(self):
+        for project in self:
+            active_tasks = project.task_ids.filtered(lambda t: t.active and t.status != 'cancelled')
+            if not active_tasks:
+                project.progress = 0.0
+            else:
+                total = sum(active_tasks.mapped('progress'))
+                project.progress = round(total / len(active_tasks), 2)
+
+    @api.depends('task_ids.deadline', 'task_ids.date_deadline', 'task_ids.status', 'task_ids.is_closed', 'task_ids.active')
+    def _compute_overdue_tasks(self):
+        for project in self:
+            overdue = project.task_ids.filtered(lambda t: t.active and t.is_overdue)
+            project.overdue_task_count = len(overdue)
+            project.has_overdue_tasks = bool(overdue)
+
+    def _search_has_overdue_tasks(self, operator, value):
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            raise UserError("Unsupported search operator for has_overdue_tasks.")
+        want_overdue = (operator == '=' and value) or (operator == '!=' and not value)
+        overdue_tasks = self.env['project.task'].search([('is_overdue', '=', True), ('active', '=', True)])
+        project_ids = overdue_tasks.mapped('project_id').ids
+        if want_overdue:
+            return [('id', 'in', project_ids)]
+        return [('id', 'not in', project_ids)]
+
     # Synchronize ProjectOps fields with native Odoo project.project fields
     @api.onchange('customer_id')
     def _onchange_customer_id(self):
@@ -177,9 +238,28 @@ class ProjectProject(models.Model):
         if self.end_date:
             self.date = self.end_date
 
+    @api.model
+    def _get_next_project_code_number(self):
+        """Return the next available sequential integer for PRJ-XXXX codes."""
+        existing_codes = self.sudo().search([
+            ('project_code', '=like', 'PRJ-%'),
+        ]).mapped('project_code')
+        max_num = 0
+        for code in existing_codes:
+            suffix = code[4:]
+            if suffix.isdigit():
+                max_num = max(max_num, int(suffix))
+        return max_num + 1
+
     @api.model_create_multi
     def create(self, vals_list):
+        next_num = None
         for vals in vals_list:
+            if not vals.get('project_code') or str(vals.get('project_code')).strip() in ('', 'New'):
+                if next_num is None:
+                    next_num = self._get_next_project_code_number()
+                vals['project_code'] = f'PRJ-{next_num:04d}'
+                next_num += 1
             self._validate_project_vals(vals, is_create=True)
             if 'customer_id' in vals and 'partner_id' not in vals:
                 vals['partner_id'] = vals['customer_id']

@@ -57,7 +57,15 @@ Each stage contributes information to the next. Only approved worklogs and expen
 - Tasks support assignment, progress tracking, and overdue detection.
 - The system provides a simple project progress measure.
 
-The exact task and milestone statuses, progress formula, completion conditions, and reassignment behavior require team agreement.
+**Current backend baseline rules (Step 2)**
+
+- **Milestone statuses:** `planned` → `in_progress` → `completed` (or `cancelled`; `completed`/`cancelled` can be reopened to `planned`).
+- **Task statuses:** `todo`, `in_progress`, `done`, `cancelled`.
+- **Task completion behavior:** Marking a task `done` (`action_mark_done()` or writing `status='done'`) sets `state='1_done'` and `progress=100.0`.
+- **Project progress formula:** Unweighted arithmetic average of `progress` across active, non-cancelled tasks (`0.0` if no active non-cancelled tasks), rounded to 2 decimal places.
+- **Overdue detection:** A task is overdue when its `deadline` (or `date_deadline`) is strictly earlier than today (`< today`) and its status is neither `done` nor `cancelled` (and `not is_closed`).
+
+Reassignment history preservation remains subject to final team confirmation.
 
 ## 6. Worklog Submission and Approval
 

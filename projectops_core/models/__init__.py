@@ -3,3 +3,5 @@
 from . import res_partner
 from . import project_project
 from . import project_assignment
+from . import project_milestone
+from . import project_task

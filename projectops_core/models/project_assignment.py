@@ -96,8 +96,23 @@ class ProjectopsAssignment(models.Model):
                 if existing:
                     raise ValidationError("A user cannot have duplicate assignment records for the same project.")
         res = super().write(vals)
-        if vals.get('active') or vals.get('user_id'):
+        if 'active' in vals or 'user_id' in vals or 'project_id' in vals:
             for record in self:
-                if record.user_id and record.project_id and record.active:
+                if not record.project_id or not record.user_id:
+                    continue
+                if record.active:
                     record.project_id.message_subscribe(partner_ids=[record.user_id.partner_id.id])
+                elif record.user_id != record.project_id.owner_user_id:
+                    record.project_id.message_unsubscribe(partner_ids=[record.user_id.partner_id.id])
+        return res
+
+    def unlink(self):
+        to_unsubscribe = [
+            (rec.project_id, rec.user_id.partner_id)
+            for rec in self
+            if rec.project_id and rec.user_id and rec.user_id != rec.project_id.owner_user_id
+        ]
+        res = super().unlink()
+        for project, partner in to_unsubscribe:
+            project.message_unsubscribe(partner_ids=[partner.id])
         return res
