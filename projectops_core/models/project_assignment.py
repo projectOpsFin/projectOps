@@ -7,6 +7,7 @@ from odoo.exceptions import ValidationError
 class ProjectopsAssignment(models.Model):
     _name = 'projectops.assignment'
     _description = 'ProjectOps Team Assignment'
+    _inherit = ['mail.thread']
     _order = 'project_id, user_id'
 
     project_id = fields.Many2one(
@@ -21,6 +22,7 @@ class ProjectopsAssignment(models.Model):
         string='Assigned User',
         required=True,
         index=True,
+        tracking=True,
     )
     project_role = fields.Selection(
         selection=[
@@ -33,16 +35,20 @@ class ProjectopsAssignment(models.Model):
         string='Project Role',
         required=True,
         default='member',
+        tracking=True,
     )
     start_date = fields.Date(
         string='Assignment Start',
+        tracking=True,
     )
     end_date = fields.Date(
         string='Assignment End',
+        tracking=True,
     )
     active = fields.Boolean(
         string='Active',
         default=True,
+        tracking=True,
     )
 
     _unique_project_user = models.Constraint(

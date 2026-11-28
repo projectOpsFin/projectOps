@@ -61,11 +61,10 @@ Each stage contributes information to the next. Only approved worklogs and expen
 
 - **Milestone statuses:** `planned` → `in_progress` → `completed` (or `cancelled`; `completed`/`cancelled` can be reopened to `planned`).
 - **Task statuses:** `todo`, `in_progress`, `done`, `cancelled`.
-- **Task completion behavior:** Marking a task `done` (`action_mark_done()` or writing `status='done'`) sets `state='1_done'` and `progress=100.0`.
-- **Project progress formula:** Unweighted arithmetic average of `progress` across active, non-cancelled tasks (`0.0` if no active non-cancelled tasks), rounded to 2 decimal places.
-- **Overdue detection:** A task is overdue when its `deadline` (or `date_deadline`) is strictly earlier than today (`< today`) and its status is neither `done` nor `cancelled` (and `not is_closed`).
-
-Reassignment history preservation remains subject to final team confirmation.
+- **Task completion behavior:** Marking a task `done` (`action_mark_done()` or writing `status='done'`) sets `state='1_done'` and `progress=100.0`. Setting `progress=100.0` manually does **not** auto-complete the task (so review/sign-off can still occur before marking `done`).
+- **Project progress formula:** `Project Delivery Progress (%) = (Completed Tasks / Total Tasks) × 100` across active, non-cancelled tasks (`0.0` if no active non-cancelled tasks), rounded to 2 decimal places. This assumes equal weight per task.
+- **Overdue detection:** A task is overdue when its `deadline` (or `date_deadline`) is strictly earlier than today (`< today`) and its status is neither `done` nor `cancelled` (and `not is_closed`). Tasks due today are not yet overdue.
+- **Reassignment & assignment history:** `projectops.assignment` enforces `UNIQUE(project_id, user_id)` and uses `active` toggling for deactivation/reactivation, with `mail.thread` field tracking (`user_id`, `project_role`, `start_date`, `end_date`, `active`) providing an audit trail of changes.
 
 ## 6. Worklog Submission and Approval
 
@@ -163,6 +162,10 @@ The team must agree on health thresholds, final project-completion conditions, a
 | BR-10 | Project completion is independent of invoice settlement. |
 | BR-11 | Project health indicators must explain their triggering rules. |
 | BR-12 | Team Members must not access restricted commercial data, including project billing information and other members' costs. |
+| BR-13 | Completing a task (`done`) sets progress to 100%, while manually setting progress to 100% does not auto-complete the task. |
+| BR-14 | A task is overdue only when its deadline is strictly earlier than today (`< today`) and it is not `done`, `cancelled`, or closed. |
+| BR-15 | Each user may have at most one assignment record per project (`UNIQUE(project_id, user_id)`); reassignments toggle `active` and are audited via chatter tracking. |
+| BR-16 | Project Managers can manage all projects, assignments, milestones, and tasks (without project unlink rights), while Operations Managers retain full portfolio and delete authority. |
 
 ## 11. Validation and Security Rules
 
@@ -174,19 +177,78 @@ The team must agree on health thresholds, final project-completion conditions, a
 - Record approval decisions and approver identity.
 - Test permissions using separate accounts for all four internal roles.
 - Reject direct requests that attempt to access restricted records or perform unauthorized actions.
+- Restrict Team Members on `project.task` to updating only `progress`, `status`, `state`, and `description` on tasks assigned to them.
+- Restrict Finance Officers to read-only access on projects, assignments, milestones, and tasks.
 
-## 12. Financial Calculations
+## 12. Project Calculation Formulas
 
-| Metric | Calculation |
+| Metric | Formula |
 |---|---|
-| Recorded labour cost | Approved hours × applicable hourly cost rate |
-| Recorded project cost | Approved labour cost + approved expenses |
-| Budget utilization | (Recorded project cost ÷ Project cost budget) × 100 |
-| Outstanding billing balance | Invoice amount − Payments received |
+| Recorded Labour Cost (RLC) | Approved Hours × Hourly Cost Rate Snapshot |
+| Recorded Project Cost (RPC) | Recorded Labour Cost + Approved Project Expenses |
+| Budget Utilization (%) | (RPC ÷ Project Cost Budget) × 100 |
+| Outstanding Billing Balance | Billed Amount − Payments Received |
+| Estimated Project Contribution | Contract Value − RPC |
+| Project Delivery Progress (%) | (Completed Tasks ÷ Total Tasks) × 100 |
 
-**Reference example:** Approved labour of ETB 80,500 plus approved expenses of ETB 18,000 produces recorded project cost of ETB 98,500. For a project cost budget of ETB 300,000, budget utilization is 32.83%.
+### 12.1 Recorded Labour Cost (RLC)
 
-The team must agree on zero or missing budgets, rounding, currency precision, rate changes, adjusted transactions, and payment reversals before implementing the affected calculations.
+Recorded labour cost is the total cost of approved worklogs:
+
+$$\text{RLC} = \sum_{i=1}^{n} (H_i \times R_i)$$
+
+Where:
+- $H_i$ = approved hours of worklog $i$
+- $R_i$ = hourly cost rate snapshot of worklog $i$
+- $n$ = number of approved worklogs
+
+Only approved worklogs contribute to this calculation.
+
+### 12.2 Recorded Project Cost (RPC)
+
+Recorded project cost is the total approved labour cost plus approved project expenses:
+
+$$\text{RPC} = \sum_{i=1}^{n} (H_i \times R_i) + \sum_{j=1}^{m} E_j$$
+
+Where:
+- $H_i$ = approved hours
+- $R_i$ = hourly cost rate snapshot
+- $E_j$ = amount of approved expense $j$
+- $m$ = number of approved expenses
+
+### 12.3 Budget Utilization (%)
+
+Budget utilization shows how much of the project's cost budget has been used:
+
+$$\text{Budget Utilization (\%)} = \frac{\text{RPC}}{\text{Project Cost Budget}} \times 100$$
+
+**Example:** If recorded project cost is ETB 98,500 and cost budget is ETB 300,000, $\frac{98,500}{300,000} \times 100 = 32.83\%$. A utilization percentage greater than 100% means the recorded project cost has exceeded the budget.
+
+### 12.4 Outstanding Billing Balance
+
+This represents the amount the customer has not yet paid:
+
+$$\text{Outstanding Billing Balance} = \text{Billed Amount} - \text{Payments Received}$$
+
+**Example:** If the customer has been billed ETB 100,000 and has paid ETB 60,000, outstanding balance = $100,000 - 60,000 = \text{ETB } 40,000$.
+
+### 12.5 Estimated Project Contribution
+
+This represents the estimated contribution remaining after recorded project costs are deducted from the contract value:
+
+$$\text{Estimated Project Contribution} = \text{Contract Value} - \text{RPC}$$
+
+**Example:** If contract value is ETB 400,000 and recorded project cost is ETB 98,500, estimated project contribution = $400,000 - 98,500 = \text{ETB } 301,500$. This is an estimated project contribution, not net profit, because ProjectOps does not include all company accounting expenses.
+
+### 12.6 Project Delivery Progress (%)
+
+This measures the proportion of project tasks that have been completed:
+
+$$\text{Project Delivery Progress (\%)} = \frac{\text{Completed Tasks}}{\text{Total Tasks}} \times 100$$
+
+**Example:** If 8 out of 10 tasks are completed, $\frac{8}{10} \times 100 = 80\%$. This formula assumes that every task has equal weight (evaluated across active, non-cancelled tasks). If the team later agrees that tasks should have different weights, the formula would need to be revised.
+
+The team must still agree on zero or missing budgets, rounding, currency precision, rate changes, adjusted transactions, and payment reversals before implementing the affected financial calculations.
 
 ## 13. Decisions Requiring Team Agreement
 
@@ -196,7 +258,6 @@ The source documents leave the following decisions unresolved:
 |---|---|
 | Customer and project access | Which roles may create and edit customers and projects? |
 | Project lifecycle | Who activates projects? Can projects be cancelled, archived, or reopened? |
-| Tasks and milestones | Which statuses and progress calculations will be used? |
 | Worklog approvals | Which roles approve worklogs? How are rejection and resubmission handled? |
 | Expense approvals | Who approves expenses? When are receipts mandatory? |
 | Approved records | How are corrections, cancellations, and reversals handled? |

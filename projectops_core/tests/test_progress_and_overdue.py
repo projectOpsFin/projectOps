@@ -32,7 +32,7 @@ class TestProgressAndOverdue(TransactionCase):
         })
 
     def test_project_progress_calculation(self):
-        """Test that project progress averages non-cancelled tasks and updates consistently."""
+        """Test that project progress follows (Completed Tasks / Total Tasks) * 100 for non-cancelled tasks."""
         self.assertEqual(self.project.progress, 0.0)
 
         t1 = self.env['project.task'].with_user(self.pm).create({
@@ -56,8 +56,8 @@ class TestProgressAndOverdue(TransactionCase):
             'status': 'cancelled',
         })
 
-        # Average of t1 (50) and t2 (100) = 75.0; t3 is cancelled and excluded
-        self.assertEqual(self.project.progress, 75.0)
+        # 1 completed (t2) out of 2 active non-cancelled tasks (t1, t2) = 50.0%; t3 is cancelled and excluded
+        self.assertEqual(self.project.progress, 50.0)
 
         t1.action_mark_done()
         self.assertEqual(self.project.progress, 100.0)

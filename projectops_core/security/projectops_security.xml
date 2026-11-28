@@ -81,11 +81,23 @@
             <field name="perm_unlink" eval="0"/>
         </record>
 
-        <!-- Operations Manager & Finance Rule: see all projects -->
-        <record id="rule_projectops_project_operations_manager" model="ir.rule">
-            <field name="name">ProjectOps: Operations Manager and Finance see all projects</field>
+        <!-- Finance Rule: read-only access to all projects -->
+        <record id="rule_projectops_project_finance" model="ir.rule">
+            <field name="name">ProjectOps: Finance view all projects</field>
             <field name="model_id" ref="project.model_project_project"/>
-            <field name="groups" eval="[(4, ref('group_projectops_manager')), (4, ref('group_projectops_finance'))]"/>
+            <field name="groups" eval="[(4, ref('group_projectops_finance'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <!-- Operations Manager Rule: full access to all projects -->
+        <record id="rule_projectops_project_operations_manager" model="ir.rule">
+            <field name="name">ProjectOps: Operations Manager full access to all projects</field>
+            <field name="model_id" ref="project.model_project_project"/>
+            <field name="groups" eval="[(4, ref('group_projectops_manager'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="perm_read" eval="1"/>
             <field name="perm_write" eval="1"/>
