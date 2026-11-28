@@ -113,7 +113,7 @@ class ProjectProject(models.Model):
         string='Progress (%)',
         compute='_compute_project_progress',
         store=True,
-        help='Overall project progress calculated as the average progress of non-cancelled tasks.',
+        help='Project delivery progress (%) = (Completed Tasks / Total Tasks) * 100 across active non-cancelled tasks.',
     )
     overdue_task_count = fields.Integer(
         string='Overdue Tasks',
@@ -190,15 +190,15 @@ class ProjectProject(models.Model):
         for project in self:
             project.projectops_milestone_count = len(project.projectops_milestone_ids)
 
-    @api.depends('task_ids.progress', 'task_ids.status', 'task_ids.active')
+    @api.depends('task_ids.status', 'task_ids.active')
     def _compute_project_progress(self):
         for project in self:
             active_tasks = project.task_ids.filtered(lambda t: t.active and t.status != 'cancelled')
             if not active_tasks:
                 project.progress = 0.0
             else:
-                total = sum(active_tasks.mapped('progress'))
-                project.progress = round(total / len(active_tasks), 2)
+                completed_count = len(active_tasks.filtered(lambda t: t.status == 'done'))
+                project.progress = round((completed_count / len(active_tasks)) * 100.0, 2)
 
     @api.depends('task_ids.deadline', 'task_ids.date_deadline', 'task_ids.status', 'task_ids.is_closed', 'task_ids.active')
     def _compute_overdue_tasks(self):
