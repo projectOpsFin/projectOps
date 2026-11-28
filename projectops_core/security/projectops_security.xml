@@ -23,7 +23,7 @@
         <field name="comment">Performs assigned project work and submits worklogs and expenses.</field>
         <field name="sequence">10</field>
         <field name="privilege_id" ref="res_groups_privilege_projectops"/>
-        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('hr_timesheet.group_hr_timesheet_user'))]"/>
     </record>
 
     <!-- 2. Project Manager -->
@@ -32,7 +32,7 @@
         <field name="comment">Manages project delivery, tasks, milestones, and assigned team members.</field>
         <field name="sequence">20</field>
         <field name="privilege_id" ref="res_groups_privilege_projectops"/>
-        <field name="implied_ids" eval="[(4, ref('group_projectops_team_member')), (4, ref('project.group_project_user'))]"/>
+        <field name="implied_ids" eval="[(4, ref('group_projectops_team_member')), (4, ref('project.group_project_user')), (4, ref('hr_timesheet.group_hr_timesheet_approver')), (4, ref('analytic.group_analytic_accounting'))]"/>
     </record>
 
     <!-- 3. Finance Officer -->
@@ -202,6 +202,96 @@
             <field name="groups" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_manager'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <!-- Worklog Rules (account.analytic.line) -->
+        <record id="rule_projectops_worklog_team_member_read" model="ir.rule">
+            <field name="name">ProjectOps: Team Member read own worklogs on assigned projects</field>
+            <field name="model_id" ref="analytic.model_account_analytic_line"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">[('project_id', '!=', False), ('user_id', '=', user.id), '|', ('project_id.owner_user_id', '=', user.id), ('project_id.assigned_user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_worklog_team_member_write" model="ir.rule">
+            <field name="name">ProjectOps: Team Member manage own draft worklogs on assigned projects</field>
+            <field name="model_id" ref="analytic.model_account_analytic_line"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">[('project_id', '!=', False), ('user_id', '=', user.id), ('status', '=', 'draft'), '|', ('project_id.owner_user_id', '=', user.id), ('project_id.assigned_user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="0"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_projectops_worklog_manager_finance_read" model="ir.rule">
+            <field name="name">ProjectOps: Manager and Finance read all worklogs</field>
+            <field name="model_id" ref="analytic.model_account_analytic_line"/>
+            <field name="groups" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_finance')), (4, ref('group_projectops_manager'))]"/>
+            <field name="domain_force">[('project_id', '!=', False)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_worklog_manager_write" model="ir.rule">
+            <field name="name">ProjectOps: Manager manage worklogs</field>
+            <field name="model_id" ref="analytic.model_account_analytic_line"/>
+            <field name="groups" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_manager'))]"/>
+            <field name="domain_force">[('project_id', '!=', False)]</field>
+            <field name="perm_read" eval="0"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <!-- Expense Rules (hr.expense) -->
+        <record id="rule_projectops_expense_team_member_read" model="ir.rule">
+            <field name="name">ProjectOps: Team Member read own expenses on assigned projects</field>
+            <field name="model_id" ref="hr_expense.model_hr_expense"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">[('submitter_user_id', '=', user.id), '|', ('project_id.owner_user_id', '=', user.id), ('project_id.assigned_user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_expense_team_member_write" model="ir.rule">
+            <field name="name">ProjectOps: Team Member manage own draft expenses on assigned projects</field>
+            <field name="model_id" ref="hr_expense.model_hr_expense"/>
+            <field name="groups" eval="[(4, ref('group_projectops_team_member'))]"/>
+            <field name="domain_force">[('submitter_user_id', '=', user.id), ('status', '=', 'draft'), '|', ('project_id.owner_user_id', '=', user.id), ('project_id.assigned_user_ids', 'in', [user.id])]</field>
+            <field name="perm_read" eval="0"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_projectops_expense_manager_finance_read" model="ir.rule">
+            <field name="name">ProjectOps: Manager and Finance read all expenses</field>
+            <field name="model_id" ref="hr_expense.model_hr_expense"/>
+            <field name="groups" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_finance')), (4, ref('group_projectops_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_projectops_expense_manager_write" model="ir.rule">
+            <field name="name">ProjectOps: Manager manage expenses</field>
+            <field name="model_id" ref="hr_expense.model_hr_expense"/>
+            <field name="groups" eval="[(4, ref('group_projectops_project_manager')), (4, ref('group_projectops_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="0"/>
             <field name="perm_write" eval="1"/>
             <field name="perm_create" eval="1"/>
             <field name="perm_unlink" eval="1"/>

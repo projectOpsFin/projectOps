@@ -58,8 +58,8 @@ projectops/
 │   │   └── ...                 # Business models and model extensions
 │   │
 │   ├── security/
-│   │   ├── security.xml        # Security groups and rules
-│   │   └── ir.model.access.csv # Model-level access rights
+│   │   ├── projectops_security.xml # Security groups and rules
+│   │   └── ir.model.access.csv     # Model-level access rights
 │   │
 │   ├── views/
 │   │   ├── ...                 # Form, list, search views and menus
@@ -80,10 +80,11 @@ projectops/
 │   └── i18n/                   # Translation files, if required
 │
 ├── docs/
-│   ├── 01-project-overview-and-requirements.md
-│   ├── 02-system-architecture-and-data-design.md
-│   ├── 03-workflows-and-business-rules.md
-│   └── 04-project-plan-and-team-governance.md
+│   ├── project-overview-and-requirements.md
+│   ├── system-architecture-and-data-design.md
+│   ├── workflows-and-business-rules.md
+│   ├── project-plan-and-team-governance.md
+│   └── implementation-status.md
 │
 ├── README.md
 └── .gitignore
@@ -262,22 +263,19 @@ Constraints:
 - `end_date` must not be earlier than `start_date`.
 - Contract value and cost budget must follow the agreed non-negative validation rules.
 
-#### 3.3.3 User
+#### 3.3.3 User & Employee Hourly Rate
 
-**Native model:** `res.users`
+**Native models:** `res.users` & `hr.employee` (`hr_hourly_cost`) — Reuse + Extend
 
-The ERD identifies these user attributes:
+| Field | Model | Odoo field type | Description |
+|---|---|---|---|
+| `name` | `res.users` | Native Char | User name |
+| `login` / `email` | `res.users` | Native fields | User login and contact information |
+| `hourly_cost` | `hr.employee` | Native Monetary (`hr_hourly_cost`) | Employee's applicable hourly cost rate |
+| `hourly_cost_rate` | `res.users` | Monetary (ProjectOps) | User's hourly cost rate, bidirectionally synced with `hr.employee.hourly_cost` |
+| `active` | `res.users` | Native Boolean | Whether the user is active |
 
-| Field | Odoo field type | Description |
-|---|---|---|
-| `name` | Native Char | User name |
-| `login` / email | Native fields | User login and contact information |
-| `hourly_cost_rate` | Monetary | User's applicable hourly cost rate |
-| `active` | Native Boolean | Whether the user is active |
-
-The ERD shows a role/security group attribute. In Odoo, role permissions should primarily be assigned through security groups rather than relying on a separate text role field.
-
-The team must agree where the hourly cost rate is stored and who can maintain it. The worklog must preserve the applicable rate as a historical snapshot.
+The ERD shows a role/security group attribute. In Odoo, role permissions are assigned through security groups rather than a text role field. Hourly cost rates are maintained by Operations Managers, Project Managers, and Finance Officers, and are hidden from Team Members (`BR-12`). Worklogs capture the applicable rate as an immutable historical snapshot (`hourly_rate_snapshot`).
 
 #### 3.3.4 Project Assignment
 
@@ -326,35 +324,42 @@ Validation: Progress must remain between 0 and 100. Calling `action_mark_done()`
 
 #### 3.3.7 Worklog
 
-**Proposed model:** `projectops.worklog`
+**Model:** `account.analytic.line` (`hr_timesheet` — Reuse + Extend)
 
 | Field | Odoo field type | Required | Description |
 |---|---|---|---|
-| `project_id` | Many2one | Yes | Related project |
-| `task_id` | Many2one | No | Related task |
-| `submitted_by_user_id` | Many2one | Yes | User submitting the worklog |
-| `work_date` | Date | Yes | Date the work was performed |
-| `hours` | Float | Yes | Number of hours worked |
-| `hourly_rate_snapshot` | Monetary | Yes | Historical hourly cost rate |
-| `description` | Text | Yes | Work performed |
-| `status` | Selection | Yes | Submission status |
+| `project_id` | Many2one | Yes | Related `project.project` (native `hr_timesheet`) |
+| `task_id` | Many2one | No | Related `project.task` within the same project (native `hr_timesheet`) |
+| `user_id` | Many2one | Yes | Submitting `res.users` (native `analytic`) |
+| `employee_id` | Many2one | Yes | Related `hr.employee`, auto-resolved/created for the user if needed (native `hr_timesheet`) |
+| `date` | Date | Yes | Date the work was performed (native `analytic`) |
+| `unit_amount` | Float | Yes | Number of hours worked; must be strictly positive (native `analytic`) |
+| `name` | Char | Yes | Work performed description; cannot be empty (native `analytic`) |
+| `currency_id` | Many2one | Yes | Currency reference (native `analytic`) |
+| `hourly_rate_snapshot` | Monetary | Yes | Immutable historical hourly cost rate captured at creation/submission (restricted to PM/Finance/Ops Manager) |
+| `status` | Selection | Yes | Submission status (`draft`, `submitted`, `approved`, `rejected`) |
 
-The hourly rate snapshot is required by the proposal's historical cost integrity requirement. A later change to a user's hourly rate must not alter previously recorded worklog costs.
+`project.project` and `project.task` expose `worklog_ids` (`One2many('account.analytic.line', ...)`) and `worklog_count`. A later change to `hr.employee.hourly_cost` or `res.users.hourly_cost_rate` does not alter `hourly_rate_snapshot` on existing worklogs.
 
 #### 3.3.8 Expense
 
-**Proposed model:** `projectops.expense`
+**Model:** `hr.expense` (`hr_expense` — Reuse + Extend)
 
 | Field | Odoo field type | Required | Description |
 |---|---|---|---|
-| `project_id` | Many2one | Yes | Related project |
-| `submitter_user_id` | Many2one | Yes | Submitting user |
-| `expense_date` | Date | Yes | Expense date |
-| `category` | Selection or Many2one | Yes | Expense category |
-| `amount` | Monetary | Yes | Expense amount |
-| `currency_id` | Many2one | Yes | Currency reference |
-| `receipt_file` | Binary or attachment reference | No | Supporting receipt |
-| `status` | Selection | Yes | Submission status |
+| `project_id` | Many2one | Yes | Related `project.project` |
+| `employee_id` | Many2one | Yes | Related `hr.employee`, auto-resolved/created for the submitter if needed (native `hr_expense`) |
+| `submitter_user_id` | Many2one | Yes | Submitting `res.users`, synced with `employee_id.user_id` |
+| `date` | Date | Yes | Expense date (native `hr_expense`) |
+| `category` | Selection | Yes | Standardized ProjectOps category (`travel`, `accommodation`, `meals`, `software`, `hardware`, `materials`, `other`) |
+| `total_amount` / `total_amount_currency` | Monetary | Yes | Expense amount; must be strictly positive (native `hr_expense`) |
+| `currency_id` | Many2one | Yes | Currency reference (native `hr_expense`) |
+| `name` | Char | Yes | Expense description/summary; cannot be empty (native `hr_expense`) |
+| `description` | Text | No | Additional internal notes (native `hr_expense`) |
+| `receipt_file` / `receipt_filename` | Binary / Char | Conditional | Optional direct receipt upload alongside native `attachment_ids` / `message_main_attachment_id`; at least one receipt attachment is required on `action_submit()` |
+| `status` | Selection | Yes | ProjectOps submission status (`draft`, `submitted`, `approved`, `rejected`), synced with `hr.expense.approval_state` |
+
+`project.project` exposes `expense_ids` (`One2many('hr.expense', 'project_id')`) and `expense_count`.
 
 #### 3.3.9 Invoice
 
@@ -532,8 +537,9 @@ Changes to shared models, fields, status values or method interfaces should be r
 
 ## 8. Related Project Documents
 
-- `01-project-overview-and-requirements.md` — project scope, actors and requirements.
-- `03-workflows-and-business-rules.md` — business workflows, status transitions and calculations.
-- `04-project-plan-and-team-governance.md` — implementation roadmap, responsibilities and team practices.
+- `project-overview-and-requirements.md` — project scope, actors and requirements.
+- `workflows-and-business-rules.md` — business workflows, status transitions and calculations.
+- `project-plan-and-team-governance.md` — implementation roadmap, responsibilities and team practices.
+- `implementation-status.md` — current repository implementation baseline and test coverage.
 
 The architecture and data design should be kept consistent with the ProjectOps proposal, ERD, role-permission matrix, workflow diagrams and shared technical contracts. This document is a design baseline for review, not confirmation that all proposed technical decisions have been approved.

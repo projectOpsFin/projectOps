@@ -81,9 +81,13 @@ Each stage contributes information to the next. Only approved worklogs and expen
 - Users cannot approve their own worklogs.
 - Pending and rejected worklogs are excluded from recorded project cost.
 - Approval history must identify the approver.
-- The applicable hourly cost rate must be saved as a snapshot on each worklog so later rate changes do not alter historical costs.
+- The applicable hourly cost rate must be saved as a snapshot on each worklog (`hourly_rate_snapshot` on `account.analytic.line`) so later rate changes do not alter historical costs.
 
-The authorized approver, rejection-reason requirements, resubmission process, and correction of approved worklogs require team agreement.
+**Implemented Step 3 baseline rules (Worklogs)**
+
+- **Hourly rate source & visibility:** Hourly cost rates are stored on `hr.employee.hourly_cost` (`hr_hourly_cost`) and bidirectionally synced with `res.users.hourly_cost_rate`. Only Operations Managers, Project Managers, and Finance Officers can view or maintain hourly cost rates and `hourly_rate_snapshot`; Team Members cannot access cost rates (`BR-12`).
+- **Submission & locking:** Worklogs start in `draft` and transition to `submitted` via `action_submit()`. Hours (`unit_amount`) must be strictly positive, description (`name`) non-empty, `task_id` (if set) must belong to `project_id`, and the submitter must be the project owner, an active project assignee, or a Project/Operations Manager. Once submitted, worklogs are locked against edits or deletion.
+- **Planned Part 4 rejection/resubmission rule:** Rejected worklogs (`status = 'rejected'`) may only be reset to `draft` by the original submitter or a Project/Operations Manager for editing and resubmission; `approved` worklogs remain permanently locked.
 
 ## 7. Expense Submission and Approval
 
@@ -101,7 +105,11 @@ The authorized approver, rejection-reason requirements, resubmission process, an
 - Pending and rejected expenses are excluded from recorded project cost.
 - Approval actions must be traceable to the person who made the decision.
 
-The team must agree on mandatory receipt conditions, expense categories, rejection reasons, resubmission, and correction or reversal behavior.
+**Implemented Step 3 baseline rules (Expenses)**
+
+- **Mandatory receipt on submission:** Every `hr.expense` submitted via `action_submit()` must have at least one supporting receipt (`receipt_file`, `message_main_attachment_id`, or `ir.attachment` in `attachment_ids`). Draft expenses may be saved without a receipt while being prepared.
+- **Expense categories & validation:** Expenses use a standardized ProjectOps `category` (`travel`, `accommodation`, `meals`, `software`, `hardware`, `materials`, `other`), require a valid `project_id`, strictly positive amount (`total_amount` / `total_amount_currency`), non-empty description (`name`), and an authorized submitter on the project. Once submitted (`draft` → `submitted`), expenses are locked against edits or deletion.
+- **Planned Part 4 rejection/resubmission rule:** Rejected expenses (`status = 'rejected'` / `approval_state = 'refused'`) may only be reset to `draft` by the original submitter or a Project/Operations Manager for editing and resubmission; `approved` expenses remain permanently locked.
 
 ## 8. Billing and Payment Workflow
 
@@ -166,6 +174,10 @@ The team must agree on health thresholds, final project-completion conditions, a
 | BR-14 | A task is overdue only when its deadline is strictly earlier than today (`< today`) and it is not `done`, `cancelled`, or closed. |
 | BR-15 | Each user may have at most one assignment record per project (`UNIQUE(project_id, user_id)`); reassignments toggle `active` and are audited via chatter tracking. |
 | BR-16 | Project Managers can manage all projects, assignments, milestones, and tasks (without project unlink rights), while Operations Managers retain full portfolio and delete authority. |
+| BR-17 | Worklogs (`account.analytic.line`) and expenses (`hr.expense`) must have strictly positive hours/amounts, non-empty descriptions, and a submitter assigned or authorized on the target project; worklog tasks must belong to the same project. |
+| BR-18 | Worklogs and expenses are locked against edits and deletion once submitted (`status != 'draft'`). |
+| BR-19 | Every expense requires at least one supporting receipt attachment (`receipt_file` or `ir.attachment`) before submission (`action_submit()`). |
+| BR-20 | Hourly cost rates (`hr.employee.hourly_cost` / `res.users.hourly_cost_rate`) and `hourly_rate_snapshot` are hidden from Team Members and maintained only by authorized management/finance roles. |
 
 ## 11. Validation and Security Rules
 
