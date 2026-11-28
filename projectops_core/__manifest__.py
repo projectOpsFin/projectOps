@@ -14,6 +14,9 @@
         'base',
         'mail',
         'project',
+        'hr_hourly_cost',
+        'hr_timesheet',
+        'hr_expense',
     ],
     'data': [
         'security/projectops_security.xml',

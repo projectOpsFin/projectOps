@@ -9,3 +9,6 @@ from . import test_milestone_model
 from . import test_task_model
 from . import test_progress_and_overdue
 from . import test_step2_security
+from . import test_worklog_model
+from . import test_expense_model
+from . import test_step3_security

@@ -86,6 +86,7 @@ class ProjectTask(models.Model):
     )
     progress = fields.Float(
         string='Progress (%)',
+        compute=False,
         required=True,
         default=0.0,
         tracking=True,
@@ -97,11 +98,26 @@ class ProjectTask(models.Model):
         search='_search_is_overdue',
         help='True when the task deadline has passed and the task is not completed or cancelled.',
     )
+    worklog_ids = fields.One2many(
+        'account.analytic.line',
+        'task_id',
+        string='Worklogs',
+        help='Worklogs (timesheets) logged against this task.',
+    )
+    worklog_count = fields.Integer(
+        string='Worklog Count',
+        compute='_compute_worklog_count',
+    )
 
     _check_progress_range = models.Constraint(
         'CHECK(progress >= 0 AND progress <= 100)',
         'Task progress must be between 0 and 100.',
     )
+
+    @api.depends('worklog_ids')
+    def _compute_worklog_count(self):
+        for task in self:
+            task.worklog_count = len(task.worklog_ids)
 
     @api.depends('deadline', 'date_deadline', 'status', 'is_closed')
     def _compute_is_overdue(self):

@@ -126,6 +126,26 @@ class ProjectProject(models.Model):
         search='_search_has_overdue_tasks',
         help='Indicates whether the project has at least one overdue task.',
     )
+    worklog_ids = fields.One2many(
+        'account.analytic.line',
+        'project_id',
+        string='Worklogs',
+        help='Worklogs (timesheets) submitted for this project.',
+    )
+    worklog_count = fields.Integer(
+        string='Worklog Count',
+        compute='_compute_worklog_count',
+    )
+    expense_ids = fields.One2many(
+        'hr.expense',
+        'project_id',
+        string='Expenses',
+        help='Expenses submitted for this project.',
+    )
+    expense_count = fields.Integer(
+        string='Expense Count',
+        compute='_compute_expense_count',
+    )
 
     privacy_visibility = fields.Selection(
         default='followers',
@@ -189,6 +209,16 @@ class ProjectProject(models.Model):
     def _compute_projectops_milestone_count(self):
         for project in self:
             project.projectops_milestone_count = len(project.projectops_milestone_ids)
+
+    @api.depends('worklog_ids')
+    def _compute_worklog_count(self):
+        for project in self:
+            project.worklog_count = len(project.worklog_ids)
+
+    @api.depends('expense_ids')
+    def _compute_expense_count(self):
+        for project in self:
+            project.expense_count = len(project.expense_ids)
 
     @api.depends('task_ids.status', 'task_ids.active')
     def _compute_project_progress(self):
